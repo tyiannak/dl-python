@@ -1,5 +1,5 @@
 """!
-@brief Sobel filtering simple example
+@brief Averaging filtering simple example
 @author Theodoros Giannakopoulos {tyiannak@gmail.com}
 """
 import cv2
