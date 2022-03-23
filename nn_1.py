@@ -1,3 +1,4 @@
+from faulthandler import is_enabled
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -29,7 +30,7 @@ cov[cov>1] = 1
 cov[cov<0] = 0
 cov = (cov + cov.T) / 2
 X = np.concatenate([np.random.multivariate_normal(mean_1, cov, n_samples),
-                    np.random.multivariate_normal(mean_2, cov, n_samples)])    
+                    np.random.multivariate_normal(mean_2, cov, n_samples)])
 y = np.concatenate([np.zeros((n_samples,)), np.ones((n_samples, ))])
 
 # Split to train/test
@@ -56,9 +57,7 @@ class Net(nn.Module):
 model = Net()
 print(model)
 
-
 criterion = nn.CrossEntropyLoss()
-
 optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
 
 batch_size = 32
@@ -67,32 +66,50 @@ batch_no = len(X_train) // batch_size
 
 train_loss_min = np.Inf
 for epoch in range(n_epochs):
-    train_loss = 0  # should be this initalized here?
-    for i in range(batch_no):
+    train_loss = 0 
+    for i in range(batch_no): # for each batch
+        # get batch data:
         start = i * batch_size
-        end   = start + batch_size
+        end = start + batch_size
         x_var = Variable(torch.FloatTensor(X_train[start:end]))
-        y_var = Variable(torch.LongTensor(y_train[start:end])) 
-        
+        y_var = Variable(torch.LongTensor(y_train[start:end]))
+
+        # clear the gradients:
         optimizer.zero_grad()
+
+        # forward pass:
         output = model(x_var)
-        loss   = criterion(output, y_var)
+
+        # calculate loss on training data
+        loss = criterion(output, y_var)
+
+        # calculate gradients
         loss.backward()
+
+        # update weights (gradient descent):
         optimizer.step()
-        
+
+        # update loss:
+        train_loss += loss.item() * batch_size
+
+        # get training f1: 
         values, labels = torch.max(output, 1)
         f1_train = f1_score(labels.data.numpy(), y_train[start:end])
-        train_loss += loss.item()*batch_size
-    
+
     train_loss = train_loss / len(X_train)
+    if epoch % 1 == 0:
+        f1_test = evaluate_model(model, X_test, y_test)
+        print(f"Validation F1 {f1_test}")
+
     if train_loss <= train_loss_min:
-        print("Validation loss decreased ({:6f} ===> {:6f}). Saving the model...".format(train_loss_min,train_loss))
+        is_best = " (best) "
         torch.save(model.state_dict(), "model.pt")
         train_loss_min = train_loss
-    
-    if epoch % 20 == 0:
-        print('')
-        f1_test = evaluate_model(model, X_test, y_test)
-        print("Epoch: {} \tTrain Loss: {} \tTrain Accuracy: {} \tTest Accuracy: {}".format(epoch+1, train_loss, f1_train, f1_test))
+    else:
+        is_best = ""
+
+    print(f'Epoch {epoch} - Training loss {train_loss:.5f} - Training F1 {100*f1_train:.2f} - {is_best}')
+
+
 print('Training Ended! ')
 
