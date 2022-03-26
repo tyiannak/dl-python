@@ -39,32 +39,44 @@ y_train = y[::2]
 X_test = X[1::2, :]
 y_test = y[1::2]
 
+n_nodes = 512
+
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(dimensions, 512)
-        self.fc2 = nn.Linear(512, 512)
-        self.fc3 = nn.Linear(512, 2)
+        self.fc1 = nn.Linear(dimensions, n_nodes)
+        self.fc1_bn = nn.BatchNorm1d(n_nodes)
+        self.fc2 = nn.Linear(n_nodes, n_nodes)
+        self.fc2_bn = nn.BatchNorm1d(n_nodes)
+        self.fc3 = nn.Linear(n_nodes, 2)
         self.dropout = nn.Dropout(0.2)
         
     def forward(self, x):
-        x = F.relu(self.fc1(x))
+        x = self.fc1(x)
+#        x = self.fc1_bn(x)
+        x = F.relu(x)
+#        x = self.fc1_bn(x)
         x = self.dropout(x)
-        x = F.relu(self.fc2(x))
+
+        x = self.fc2(x)
+#        x = self.fc2_bn(x)
+        x = F.relu(x)
+#        x = self.fc2_bn(x)
         x = self.dropout(x)
+
         x = self.fc3(x)
         return x
 model = Net()
 print(model)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
 
-batch_size = 32
+batch_size = 64
 n_epochs = 500
 batch_no = len(X_train) // batch_size
 
-train_loss_min = np.Inf
+f1_test_max = -np.Inf
 for epoch in range(n_epochs):
     train_loss = 0 
     for i in range(batch_no): # for each batch
@@ -94,22 +106,21 @@ for epoch in range(n_epochs):
 
         # get training f1: 
         values, labels = torch.max(output, 1)
-        f1_train = f1_score(labels.data.numpy(), y_train[start:end])
+#        f1_train = f1_score(labels.data.numpy(), y_train[start:end])
 
     train_loss = train_loss / len(X_train)
-    if epoch % 1 == 0:
-        f1_test = evaluate_model(model, X_test, y_test)
-        print(f"Validation F1 {f1_test}")
+    f1_test = evaluate_model(model, X_test, y_test)
 
-    if train_loss <= train_loss_min:
+    if f1_test >= f1_test_max:
         is_best = " (best) "
         torch.save(model.state_dict(), "model.pt")
-        train_loss_min = train_loss
+        f1_test_max = f1_test
     else:
         is_best = ""
 
-    print(f'Epoch {epoch} - Training loss {train_loss:.5f} - Training F1 {100*f1_train:.2f} - {is_best}')
-
+#    print(f'Epoch {epoch} - Training loss {train_loss:.5f} - Training F1 {100*f1_train:.2f} - {is_best}')
+    if epoch % 50 == 0 or len(is_best) > 0:
+        print(f'Epoch {epoch} - Training loss {train_loss:.5f} - Eval F1 {100*f1_test:.2f} {is_best}')
 
 print('Training Ended! ')
 
