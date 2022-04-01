@@ -8,7 +8,7 @@ from sklearn.metrics import f1_score
 
 
 def evaluate_model(n_model, test_data, test_labels):
-    X_test_var = Variable(torch.FloatTensor(test_data), requires_grad=False) 
+    X_test_var = Variable(torch.FloatTensor(test_data), requires_grad=False)
     with torch.no_grad():
         test_result = n_model(X_test_var)
     values, labels = torch.max(test_result, 1)
@@ -16,22 +16,23 @@ def evaluate_model(n_model, test_data, test_labels):
     return f1_score(y_pred, test_labels)
 
 
-n_samples_per_class = 200
-indepedence_rate = 0.5
-dimensions = 20
+from pyAudioAnalysis import MidTermFeatures as mt
+from pyAudioAnalysis import audioTrainTest as aT
+import numpy as np
+import os
 
-n_samples = n_samples_per_class
-D = dimensions # dimensions
-mean_1 = np.random.rand(D)
-mean_2 = mean_1 + 1 * np.random.random(D)
-# create the covarience matrix (that )
-cov = np.eye(D) + np.random.random((D, D)) / indepedence_rate
-cov[cov>1] = 1
-cov[cov<0] = 0
-cov = (cov + cov.T) / 2
-X = np.concatenate([np.random.multivariate_normal(mean_1, cov, n_samples),
-                    np.random.multivariate_normal(mean_2, cov, n_samples)])
-y = np.concatenate([np.zeros((n_samples,)), np.ones((n_samples, ))])
+if os.path.isfile("features.npy"):
+    with open('features.npy', 'rb') as f:
+        X = np.load(f)
+        y = np.load(f)
+else:
+    features, class_names, file_names = mt.multiple_directory_feature_extraction(["audio/speech", "audio/noise"], 1, 1, 0.1, 0.1, False)
+    X, y = aT.features_to_matrix(features)
+    with open('features.npy', 'wb') as f:
+        np.save(f, np.array(X))
+        np.save(f, np.array(y))
+
+dimensions = X.shape[1]
 
 # Split to train/test
 X_train = X[::2, :]
@@ -39,47 +40,59 @@ y_train = y[::2]
 X_test = X[1::2, :]
 y_test = y[1::2]
 
-n_nodes = 512
+n_nodes = 256
 
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.fc1 = nn.Linear(dimensions, n_nodes)
         self.fc1_bn = nn.BatchNorm1d(n_nodes)
+
         self.fc2 = nn.Linear(n_nodes, n_nodes)
         self.fc2_bn = nn.BatchNorm1d(n_nodes)
-        self.fc3 = nn.Linear(n_nodes, 2)
+
+        self.fc3 = nn.Linear(n_nodes, n_nodes)
+        self.fc3_bn = nn.BatchNorm1d(n_nodes)
+
+        self.fc4 = nn.Linear(n_nodes, 2)
         self.dropout = nn.Dropout(0.2)
         
     def forward(self, x):
         x = self.fc1(x)
-#        x = self.fc1_bn(x)
+        x = self.fc1_bn(x)
         x = F.relu(x)
-#        x = self.fc1_bn(x)
         x = self.dropout(x)
 
         x = self.fc2(x)
-#        x = self.fc2_bn(x)
+        x = self.fc2_bn(x)
         x = F.relu(x)
-#        x = self.fc2_bn(x)
         x = self.dropout(x)
 
         x = self.fc3(x)
+        x = self.fc3_bn(x)
+        x = F.relu(x)
+        x = self.dropout(x)
+
+        x = self.fc4(x)
         return x
+
+
 model = Net()
-print(model)
 
 criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
-batch_size = 64
+batch_size = 16
 n_epochs = 500
 batch_no = len(X_train) // batch_size
 
 f1_test_max = -np.Inf
+f1s = []
+patience = 50
+since_last_best = 0
 for epoch in range(n_epochs):
-    train_loss = 0 
-    for i in range(batch_no): # for each batch
+    train_loss = 0
+    for i in range(batch_no):  # for each batch
         # get batch data:
         start = i * batch_size
         end = start + batch_size
@@ -110,17 +123,25 @@ for epoch in range(n_epochs):
 
     train_loss = train_loss / len(X_train)
     f1_test = evaluate_model(model, X_test, y_test)
-
+    f1s.append(f1_test)
+    since_last_best += 1
     if f1_test >= f1_test_max:
         is_best = " (best) "
         torch.save(model.state_dict(), "model.pt")
         f1_test_max = f1_test
+        since_last_best = 0
     else:
         is_best = ""
+    if since_last_best > patience:
+        break
 
 #    print(f'Epoch {epoch} - Training loss {train_loss:.5f} - Training F1 {100*f1_train:.2f} - {is_best}')
-    if epoch % 50 == 0 or len(is_best) > 0:
+    if epoch % 1 == 0 or len(is_best) > 0:
+        print(since_last_best)
         print(f'Epoch {epoch} - Training loss {train_loss:.5f} - Eval F1 {100*f1_test:.2f} {is_best}')
 
 print('Training Ended! ')
 
+import matplotlib.pyplot as plt
+plt.plot(f1s)
+plt.show()
