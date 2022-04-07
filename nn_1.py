@@ -92,7 +92,7 @@ patience = 50
 since_last_best = 0
 for epoch in range(n_epochs):
     train_loss = 0
-    for i in range(batch_no):  # for each batch
+    for i in range(batch_no):  # for each batch (TODO Use dataloaders in another example!)
         # get batch data:
         start = i * batch_size
         end = start + batch_size
