@@ -7,14 +7,23 @@ import numpy as np
 from skimage.io import imread
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, f1_score
 from tqdm import tqdm
 
-# loading dataset
+
+def evaluate_model(n_model, data, labels):
+    # prediction for training set
+    with torch.no_grad():
+        output = n_model(data)
+    softmax = torch.exp(output).cpu()
+    prob = list(softmax.numpy())
+    predictions = np.argmax(prob, axis=1)
+    return f1_score(labels, predictions, average='macro')
+
+
 train = pd.read_csv('data/apparel/train_LbELtWX/train.csv')
 test = pd.read_csv('data/apparel/test_ScVgIM0/test.csv')
-train = train[::5]
-print(train)
+train = train[::10]
 
 # loading training images
 train_img = []
@@ -30,12 +39,10 @@ train_y = train['label'].values
 
 # split data:
 train_x, val_x, train_y, val_y = train_test_split(train_x, train_y, test_size = 0.1)
-print((train_x.shape, train_y.shape), (val_x.shape, val_y.shape))
 train_x = torch.from_numpy(train_x.reshape(train_x.shape[0], 1, 28, 28))
 train_y = torch.from_numpy(train_y.astype(int))
 val_x = torch.from_numpy(val_x.reshape(val_x.shape[0], 1, 28, 28))
 val_y = torch.from_numpy(val_y.astype(int))
-print(val_x.shape, val_y.shape)
 
 class Net(Module):   
     def __init__(self):
@@ -107,14 +114,4 @@ train_losses = []
 val_losses = []
 for epoch in range(n_epochs):
     train(epoch)
-
-# prediction for training set
-with torch.no_grad():
-    output = model(train_x)
-
-softmax = torch.exp(output).cpu()
-prob = list(softmax.numpy())
-predictions = np.argmax(prob, axis=1)
-
-# accuracy on training set
-print(accuracy_score(train_y, predictions))
+    evaluate_model(model, train_x, train_y)
