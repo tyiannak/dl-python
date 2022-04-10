@@ -21,28 +21,18 @@ def evaluate_model(n_model, data, labels):
     return f1_score(labels, predictions, average='macro')
 
 
-train = pd.read_csv('data/apparel/train_LbELtWX/train.csv')
-test = pd.read_csv('data/apparel/test_ScVgIM0/test.csv')
-train = train[::10]
-
-# loading training images
-train_img = []
-for img_name in tqdm(train['id']):
-    image_path = 'data/apparel/train_LbELtWX/train/' + str(img_name) + '.png'
-    img = imread(image_path, as_gray=True)      # read the image
-    img /= 255.0    # normalize pixels
-    img = img.astype('float32')    # convert int to float
-    train_img.append(img)
-
-train_x = np.array(train_img)
-train_y = train['label'].values
-
-# split data:
-train_x, val_x, train_y, val_y = train_test_split(train_x, train_y, test_size = 0.1)
-train_x = torch.from_numpy(train_x.reshape(train_x.shape[0], 1, 28, 28))
-train_y = torch.from_numpy(train_y.astype(int))
-val_x = torch.from_numpy(val_x.reshape(val_x.shape[0], 1, 28, 28))
-val_y = torch.from_numpy(val_y.astype(int))
+def read_and_preprocess_data(csv_file, data_path):
+    data = pd.read_csv(csv_file)
+    data = data[::100]
+    data_img = []
+    for img_name in tqdm(data['id']):
+        image_path = data_path + str(img_name) + '.png'
+        img = imread(image_path, as_gray=True) / 255.0  # read image & normalize
+        img = img.astype('float32')    # convert int to float
+        data_img.append(img)
+    data_x = np.array(data_img)
+    data_y = data['label'].values
+    return data_x, data_y
 
 class Net(Module):   
     def __init__(self):
@@ -50,19 +40,19 @@ class Net(Module):
 
         self.cnn_layers = Sequential(
             # Defining a 2D convolution layer
-            Conv2d(1, 4, kernel_size=3, stride=1, padding=1),
-            BatchNorm2d(4),
+            Conv2d(1, 16, kernel_size=3, stride=1, padding=1),
+            BatchNorm2d(16),
             ReLU(inplace=True),
             MaxPool2d(kernel_size=2, stride=2),
             # Defining another 2D convolution layer
-            Conv2d(4, 4, kernel_size=3, stride=1, padding=1),
-            BatchNorm2d(4),
+            Conv2d(16, 32, kernel_size=3, stride=1, padding=1),
+            BatchNorm2d(32),
             ReLU(inplace=True),
             MaxPool2d(kernel_size=2, stride=2),
         )
 
         self.linear_layers = Sequential(
-            Linear(4 * 7 * 7, 10)
+            Linear(7 * 7 * 32, 10)
         )
 
     # Defining the forward pass    
@@ -72,46 +62,61 @@ class Net(Module):
         x = self.linear_layers(x)
         return x
 
+
+def train(model, X_train, y_train, X_val, y_val, n_epochs = 20):
+
+    train_losses, val_losses, train_f1, val_f1 = [], [], [], []
+
+    for e in range(n_epochs):
+        model.train()
+        tr_loss = 0
+        x_train, y_train = Variable(X_train), Variable(y_train)
+        x_val, y_val = Variable(X_val), Variable(y_val)
+
+        if torch.cuda.is_available():      # convert data to GPU format
+            x_train = x_train.cuda()
+            y_train = y_train.cuda()
+            x_val = x_val.cuda()
+            y_val = y_val.cuda()
+
+        optimizer.zero_grad()      # clear the Gradients
+        output_train = model(x_train)   # prediction for training set
+        output_val = model(x_val)   # prediction for validation set
+
+        # compute losses
+        loss_train = criterion(output_train, y_train)
+        loss_val = criterion(output_val, y_val)
+        train_losses.append(loss_train.detach().numpy())
+        val_losses.append(loss_val.detach().numpy())
+
+        # backprop and update weights:
+        loss_train.backward()
+        optimizer.step()
+        tr_loss = loss_train.item()
+        print('Epoch : ', e+1, '\t', 'loss :', loss_val)
+        train_f1.append(evaluate_model(model, X_train, y_train))
+        val_f1.append(evaluate_model(model, X_val, y_val))
+    import matplotlib.pyplot as plt
+    plt.plot(range(n_epochs), train_losses, 'g')
+    plt.plot(range(n_epochs), val_losses, 'r')
+    plt.show()
+
+# read data:
+train_x, train_y = read_and_preprocess_data('data/apparel/train_LbELtWX/train.csv', 
+                                            'data/apparel/train_LbELtWX/train/')
+
+# split data:
+train_x, val_x, train_y, val_y = train_test_split(train_x, train_y, test_size = 0.1)
+train_x = torch.from_numpy(train_x.reshape(train_x.shape[0], 1, 28, 28))
+train_y = torch.from_numpy(train_y.astype(int))
+val_x = torch.from_numpy(val_x.reshape(val_x.shape[0], 1, 28, 28))
+val_y = torch.from_numpy(val_y.astype(int))
+
 model = Net()
 optimizer = Adam(model.parameters(), lr=0.01)
 criterion = CrossEntropyLoss()
 if torch.cuda.is_available():
     model = model.cuda()
-    criterion = criterion.cuda()    
-print(model)
+    criterion = criterion.cuda()
+train(model, train_x, train_y, val_x, val_y, n_epochs=40)
 
-def train(epoch):
-    model.train()
-    tr_loss = 0
-    x_train, y_train = Variable(train_x), Variable(train_y)
-    x_val, y_val = Variable(val_x), Variable(val_y)
-
-    if torch.cuda.is_available():      # convert data to GPU format
-        x_train = x_train.cuda()
-        y_train = y_train.cuda()
-        x_val = x_val.cuda()
-        y_val = y_val.cuda()
-
-    optimizer.zero_grad()      # clear the Gradients
-    output_train = model(x_train)   # prediction for training set
-    output_val = model(x_val)   # prediction for validation set
-
-    # compute losses
-    loss_train = criterion(output_train, y_train)
-    loss_val = criterion(output_val, y_val)
-    train_losses.append(loss_train)
-    val_losses.append(loss_val)
-
-    # backprop and update weights:
-    loss_train.backward()
-    optimizer.step()
-    tr_loss = loss_train.item()
-    print('Epoch : ',epoch+1, '\t', 'loss :', loss_val)
-
-# do training:
-n_epochs = 50
-train_losses = []
-val_losses = []
-for epoch in range(n_epochs):
-    train(epoch)
-    evaluate_model(model, train_x, train_y)
