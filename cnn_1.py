@@ -11,19 +11,33 @@ from sklearn.metrics import accuracy_score, f1_score
 from tqdm import tqdm
 
 
+import torch
+from torch.autograd import Variable
+from torch.nn import Linear, ReLU, CrossEntropyLoss, Sequential, Conv2d, MaxPool2d, Module, Softmax, BatchNorm2d, Dropout
+from torch.optim import Adam, SGD
+import pandas as pd
+import numpy as np
+from skimage.io import imread
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, f1_score
+from tqdm import tqdm
+
+
 def evaluate_model(n_model, data, labels):
     # prediction for training set
+    device = next(model.parameters()).device
     with torch.no_grad():
-        output = n_model(data)
-    softmax = torch.exp(output).cpu()
-    prob = list(softmax.numpy())
-    predictions = np.argmax(prob, axis=1)
-    return f1_score(labels, predictions, average='macro')
+        output = n_model(data.to(device))
+    softmax = torch.exp(output)
+    #prob = list(softmax.numpy())
+    predictions = torch.argmax(softmax, -1)
+    return f1_score(labels.cpu().data.numpy(), predictions.cpu().data.numpy(), average='macro')
 
 
 def read_and_preprocess_data(csv_file, data_path):
     data = pd.read_csv(csv_file)
-    data = data[::100]
+    data = data[::5]
     data_img = []
     for img_name in tqdm(data['id']):
         image_path = data_path + str(img_name) + '.png'
@@ -86,8 +100,8 @@ def train(model, X_train, y_train, X_val, y_val, n_epochs = 20):
         # compute losses
         loss_train = criterion(output_train, y_train)
         loss_val = criterion(output_val, y_val)
-        train_losses.append(loss_train.detach().numpy())
-        val_losses.append(loss_val.detach().numpy())
+        train_losses.append(loss_train.cpu().detach().numpy())
+        val_losses.append(loss_val.cpu().detach().numpy())
 
         # backprop and update weights:
         loss_train.backward()
@@ -97,20 +111,26 @@ def train(model, X_train, y_train, X_val, y_val, n_epochs = 20):
         train_f1.append(evaluate_model(model, X_train, y_train))
         val_f1.append(evaluate_model(model, X_val, y_val))
     import matplotlib.pyplot as plt
-    plt.plot(range(n_epochs), train_losses, 'g')
-    plt.plot(range(n_epochs), val_losses, 'r')
+    plt.subplot(2,1,1)
+    plt.plot(range(n_epochs), train_losses, '--')
+    plt.plot(range(n_epochs), val_losses)
+    plt.subplot(2,1,2)
+    plt.plot(range(n_epochs), train_f1, '--')
+    plt.plot(range(n_epochs), val_f1)
     plt.show()
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print(device)
 # read data:
-train_x, train_y = read_and_preprocess_data('data/apparel/train_LbELtWX/train.csv', 
-                                            'data/apparel/train_LbELtWX/train/')
+train_x, train_y = read_and_preprocess_data('train_LbELtWX/train.csv', 
+                                            'train_LbELtWX/train/')
 
 # split data:
 train_x, val_x, train_y, val_y = train_test_split(train_x, train_y, test_size = 0.1)
-train_x = torch.from_numpy(train_x.reshape(train_x.shape[0], 1, 28, 28))
-train_y = torch.from_numpy(train_y.astype(int))
-val_x = torch.from_numpy(val_x.reshape(val_x.shape[0], 1, 28, 28))
-val_y = torch.from_numpy(val_y.astype(int))
+train_x = torch.from_numpy(train_x.reshape(train_x.shape[0], 1, 28, 28)).to(device)
+train_y = torch.from_numpy(train_y.astype(int)).to(device)
+val_x = torch.from_numpy(val_x.reshape(val_x.shape[0], 1, 28, 28)).to(device)
+val_y = torch.from_numpy(val_y.astype(int)).to(device)
 
 model = Net()
 optimizer = Adam(model.parameters(), lr=0.01)
@@ -118,5 +138,5 @@ criterion = CrossEntropyLoss()
 if torch.cuda.is_available():
     model = model.cuda()
     criterion = criterion.cuda()
-train(model, train_x, train_y, val_x, val_y, n_epochs=40)
+train(model, train_x, train_y, val_x, val_y, n_epochs=200)
 
