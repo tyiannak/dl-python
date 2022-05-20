@@ -37,7 +37,7 @@ def evaluate_model(n_model, data, labels):
 
 def read_and_preprocess_data(csv_file, data_path):
     data = pd.read_csv(csv_file)
-    data = data[::5]
+#    data = data[::15]
     data_img = []
     for img_name in tqdm(data['id']):
         image_path = data_path + str(img_name) + '.png'
