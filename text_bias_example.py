@@ -2,24 +2,36 @@ import gensim
 from gensim.models import Word2Vec
 from nltk.tokenize import sent_tokenize, word_tokenize
 
-if 0:
-   sample = open("books.txt")
-   s = sample.read()
-   f = s.replace("\n", " ")
-   data = []
-   # iterate through each sentence in the file
-   for i in sent_tokenize(f):
-       temp = []
-       # tokenize the sentence into words
-       for j in word_tokenize(i):
-          temp.append(j.lower())
-       data.append(temp)
 
-   print(len(data))
-   model1 = gensim.models.Word2Vec(data, min_count = 2, vector_size = 500, window = 5, sg = 1)
-   model1.save("word2vec.model")
+def train_word2vec(file_name):
+    sample = open(file_name)
+    s = sample.read()
+    # pre_process text:
+    f = s.replace("\n", " ")
+    data = []
+    # iterate through each sentence in the file
+    for i in sent_tokenize(f):
+        temp = []
+        # tokenize the sentence into words
+        for j in word_tokenize(i):
+            temp.append(j.lower())
+        data.append(temp)
+    print(len(data))
+
+    model = gensim.models.Word2Vec(data, min_count=2,
+                                   vector_size=500,
+                                   window=5, sg=1)
+    model.save(file_name + ".model")
+    print(file_name + ".model")
+    return model
+
+
+data_name = "books_small.txt"
+
+if 1:
+    model1 = train_word2vec(data_name)
 else:
-   model1 = Word2Vec.load("word2vec.model") 
+    model1 = Word2Vec.load(data_name + ".model") 
 
 w1 = 'he'
 w2 = 'she'
