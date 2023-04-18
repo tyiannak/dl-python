@@ -45,6 +45,10 @@ print(f"Cosine similarity between {w2} and {w3}: {model1.wv.similarity(w2, w3)}"
 print(f"Cosine similarity between {w1} and {w4}: {model1.wv.similarity(w1, w4)}")
 print(f"Cosine similarity between {w2} and {w4}: {model1.wv.similarity(w2, w4)}")
 
-vector = model1.wv['woman']
-sims = model1.wv.most_similar('man', topn=20)
+#vector = model1.wv['woman']
+#sims = model1.wv.most_similar('man', topn=20)
+#print(sims)
+
+
+sims = model1.wv.most_similar(positive=['doctor', 'woman'],  negative=['man'])
 print(sims)
