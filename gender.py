@@ -26,10 +26,10 @@ def train_word2vec(file_name):
     return model
 
 
-#data_name = "books_small.txt"
 data_name = "trump.txt"
 
-if 0:
+TRAIN = False
+if TRAIN:
     model1 = train_word2vec(data_name)
 else:
     model1 = Word2Vec.load(data_name + ".model") 
