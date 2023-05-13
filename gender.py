@@ -28,20 +28,20 @@ def train_word2vec(file_name):
 
 data_name = "trump.txt"
 
-TRAIN = False
+TRAIN = True
 if TRAIN:
     model1 = train_word2vec(data_name)
 else:
     model1 = Word2Vec.load(data_name + ".model") 
 
-w1, w2, w3, w3 = 'china', 'mexico', 'crime', 'trade'
-print(f"Cosine similarity between {w1} and {w3}: {model1.wv.similarity(w1, w3)}")
-print(f"Cosine similarity between {w2} and {w3}: {model1.wv.similarity(w2, w3)}")
-print(f"Cosine similarity between {w1} and {w4}: {model1.wv.similarity(w1, w4)}")
-print(f"Cosine similarity between {w2} and {w4}: {model1.wv.similarity(w2, w4)}")
+w1, w2, w3, w4 = 'china', 'mexico', 'crime', 'trade'
+print(f"Cosine similarity {w1} and {w3}: {model1.wv.similarity(w1, w3)}")
+print(f"Cosine similarity {w2} and {w3}: {model1.wv.similarity(w2, w3)}")
+print(f"Cosine similarity {w1} and {w4}: {model1.wv.similarity(w1, w4)}")
+print(f"Cosine similarity {w2} and {w4}: {model1.wv.similarity(w2, w4)}")
 
-w1, w2, w3, w3 = 'man', 'woman', 'job', 'parent'
-print(f"Cosine similarity between {w1} and {w3}: {model1.wv.similarity(w1, w3)}")
-print(f"Cosine similarity between {w2} and {w3}: {model1.wv.similarity(w2, w3)}")
-print(f"Cosine similarity between {w1} and {w4}: {model1.wv.similarity(w1, w4)}")
-print(f"Cosine similarity between {w2} and {w4}: {model1.wv.similarity(w2, w4)}")
+w1, w2, w3, w4 = 'man', 'woman', 'job', 'parent'
+print(f"Cosine similarity {w1} and {w3}: {model1.wv.similarity(w1, w3)}")
+print(f"Cosine similarity {w2} and {w3}: {model1.wv.similarity(w2, w3)}")
+print(f"Cosine similarity {w1} and {w4}: {model1.wv.similarity(w1, w4)}")
+print(f"Cosine similarity {w2} and {w4}: {model1.wv.similarity(w2, w4)}")
