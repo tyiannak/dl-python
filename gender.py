@@ -28,7 +28,7 @@ def train_word2vec(file_name):
 
 data_name = "trump.txt"
 
-TRAIN = True
+TRAIN = False  # make that True if you want to train the model again
 if TRAIN:
     model1 = train_word2vec(data_name)
 else:
