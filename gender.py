@@ -2,6 +2,7 @@ import gensim
 from gensim.models import Word2Vec
 from nltk.tokenize import sent_tokenize, word_tokenize
 
+# please use the requirements_text.txt file to install the required packages
 
 def train_word2vec(file_name):
     sample = open(file_name)
@@ -25,7 +26,6 @@ def train_word2vec(file_name):
     print(file_name + ".model")
     return model
 
-
 data_name = "trump.txt"
 
 TRAIN = False
@@ -34,25 +34,14 @@ if TRAIN:
 else:
     model1 = Word2Vec.load(data_name + ".model") 
 
-w1 = 'china'
-w2 = 'mexico'
-w3 = 'crime'
-w4 = 'trade'
+w1, w2, w3, w3 = 'china', 'mexico', 'crime', 'trade'
 print(f"Cosine similarity between {w1} and {w3}: {model1.wv.similarity(w1, w3)}")
 print(f"Cosine similarity between {w2} and {w3}: {model1.wv.similarity(w2, w3)}")
 print(f"Cosine similarity between {w1} and {w4}: {model1.wv.similarity(w1, w4)}")
 print(f"Cosine similarity between {w2} and {w4}: {model1.wv.similarity(w2, w4)}")
 
-w1 = 'man'
-w2 = 'woman'
-w3 = 'job'
-w4 = 'parent'
+w1, w2, w3, w3 = 'man', 'woman', 'job', 'parent'
 print(f"Cosine similarity between {w1} and {w3}: {model1.wv.similarity(w1, w3)}")
 print(f"Cosine similarity between {w2} and {w3}: {model1.wv.similarity(w2, w3)}")
 print(f"Cosine similarity between {w1} and {w4}: {model1.wv.similarity(w1, w4)}")
 print(f"Cosine similarity between {w2} and {w4}: {model1.wv.similarity(w2, w4)}")
-
-
-#vector = model1.wv['woman']
-#sims = model1.wv.most_similar('woman', topn=20)
-#print(sims)
