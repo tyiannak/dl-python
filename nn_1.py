@@ -8,11 +8,12 @@ from sklearn.metrics import f1_score
 
 
 def evaluate_model(n_model, test_data, test_labels):
-    X_test_var = Variable(torch.FloatTensor(test_data), requires_grad=False)
+    #X_test_var = Variable(torch.FloatTensor(test_data), requires_grad=False)
+    X_test_var = torch.tensor(test_data, device=my_device, dtype=torch.float32)
     with torch.no_grad():
         test_result = n_model(X_test_var)
     values, labels = torch.max(test_result, 1)
-    y_pred = labels.data.numpy()
+    y_pred = labels.data.cpu().numpy()
     return f1_score(y_pred, test_labels)
 
 
@@ -41,6 +42,8 @@ X_test = X[1::2, :]
 y_test = y[1::2]
 
 n_nodes = 256
+
+my_device = torch.device("mps")
 
 class Net(nn.Module):
     def __init__(self):
@@ -77,7 +80,8 @@ class Net(nn.Module):
         return x
 
 
-model = Net()
+model = Net().to(my_device)
+print(next(model.parameters()).is_mps)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
@@ -96,14 +100,14 @@ for epoch in range(n_epochs):
         # get batch data:
         start = i * batch_size
         end = start + batch_size
-        x_var = Variable(torch.FloatTensor(X_train[start:end]))
-        y_var = Variable(torch.LongTensor(y_train[start:end]))
+        x_var = Variable(torch.FloatTensor(X_train[start:end])).to(my_device)
+        y_var = Variable(torch.LongTensor(y_train[start:end])).to(my_device)
 
         # clear the gradients:
         optimizer.zero_grad()
 
         # forward pass:
-        output = model(x_var)
+        output = model(x_var).to(my_device)
 
         # calculate loss on training data
         loss = criterion(output, y_var)
