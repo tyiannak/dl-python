@@ -5,10 +5,13 @@ from torch.nn import functional as F
 from torch.autograd import Variable
 import numpy as np
 from sklearn.metrics import f1_score
+from pyAudioAnalysis import MidTermFeatures as mt
+from pyAudioAnalysis import audioTrainTest as aT
+import numpy as np
+import os
 
 
 def evaluate_model(n_model, test_data, test_labels):
-    #X_test_var = Variable(torch.FloatTensor(test_data), requires_grad=False)
     X_test_var = torch.tensor(test_data, device=my_device, dtype=torch.float32)
     with torch.no_grad():
         test_result = n_model(X_test_var)
@@ -16,12 +19,7 @@ def evaluate_model(n_model, test_data, test_labels):
     y_pred = labels.data.cpu().numpy()
     return f1_score(y_pred, test_labels)
 
-
-from pyAudioAnalysis import MidTermFeatures as mt
-from pyAudioAnalysis import audioTrainTest as aT
-import numpy as np
-import os
-
+# get audio features for the two audio classes using pyAudioAnalysis:
 if os.path.isfile("features.npy"):
     with open('features.npy', 'rb') as f:
         X = np.load(f)
@@ -35,15 +33,16 @@ else:
 
 dimensions = X.shape[1]
 
-# Split to train/test
+# Split to train/test (naive)
 X_train = X[::2, :]
 y_train = y[::2]
 X_test = X[1::2, :]
 y_test = y[1::2]
 
+# define the network architecture:
 n_nodes = 256
 
-my_device = torch.device("mps")
+my_device = torch.device("cpu")
 
 class Net(nn.Module):
     def __init__(self):
